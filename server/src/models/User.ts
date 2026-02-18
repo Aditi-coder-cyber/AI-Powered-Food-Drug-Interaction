@@ -13,6 +13,11 @@ export interface IUser extends Document {
     password: string;
     role: 'user' | 'admin';
     riskProfile: IRiskProfile | null;
+    twoFactorEnabled: boolean;
+    twoFactorMethod: 'email' | 'totp' | null;
+    twoFactorSecret: string | null;    // encrypted TOTP secret
+    emailOtp: string | null;
+    emailOtpExpiry: Date | null;
     createdAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
@@ -55,6 +60,30 @@ const userSchema = new Schema<IUser>(
         riskProfile: {
             type: riskProfileSchema,
             default: null,
+        },
+        twoFactorEnabled: {
+            type: Boolean,
+            default: false,
+        },
+        twoFactorMethod: {
+            type: String,
+            enum: ['email', 'totp', null],
+            default: null,
+        },
+        twoFactorSecret: {
+            type: String,
+            default: null,
+            select: false,
+        },
+        emailOtp: {
+            type: String,
+            default: null,
+            select: false,
+        },
+        emailOtpExpiry: {
+            type: Date,
+            default: null,
+            select: false,
         },
     },
     {

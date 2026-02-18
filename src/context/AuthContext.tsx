@@ -14,12 +14,21 @@ interface User {
     } | null;
 }
 
+interface TwoFactorChallenge {
+    tempToken: string;
+    method: 'email' | 'totp';
+}
+
 interface AuthContextType {
     user: User | null;
     loading: boolean;
     error: string | null;
-    login: (email: string, password: string) => Promise<boolean>;
+    twoFactorPending: TwoFactorChallenge | null;
+    login: (email: string, password: string) => Promise<boolean | '2fa'>;
     signup: (name: string, email: string, password: string) => Promise<boolean>;
+    verify2FA: (code: string) => Promise<boolean>;
+    resend2FAOTP: () => Promise<boolean>;
+    cancel2FA: () => void;
     loginAsGuest: () => void;
     logout: () => void;
     clearError: () => void;
@@ -32,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [twoFactorPending, setTwoFactorPending] = useState<TwoFactorChallenge | null>(null);
 
     // Auto-load user on mount if token exists
     useEffect(() => {
@@ -68,11 +78,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    const login = useCallback(async (email: string, password: string): Promise<boolean | '2fa'> => {
         setError(null);
         const res = await api.login(email, password);
 
         if (res.success && res.data) {
+            // 2FA required
+            if (res.data.requires2FA) {
+                setTwoFactorPending({
+                    tempToken: res.data.tempToken!,
+                    method: res.data.method as 'email' | 'totp',
+                });
+                return '2fa';
+            }
+
+            // No 2FA — direct login
             setUser({
                 ...res.data.user,
                 isGuest: false,
@@ -82,6 +102,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setError(res.error?.message || 'Login failed');
         return false;
+    }, []);
+
+    const verify2FA = useCallback(async (code: string): Promise<boolean> => {
+        if (!twoFactorPending) return false;
+        setError(null);
+
+        const res = await api.verify2FA(twoFactorPending.tempToken, code);
+        if (res.success && res.data) {
+            setUser({
+                ...res.data.user,
+                isGuest: false,
+            });
+            setTwoFactorPending(null);
+            return true;
+        }
+
+        setError(res.error?.message || 'Verification failed');
+        return false;
+    }, [twoFactorPending]);
+
+    const resend2FAOTP = useCallback(async (): Promise<boolean> => {
+        if (!twoFactorPending) return false;
+        setError(null);
+
+        const res = await api.send2FAOTP(twoFactorPending.tempToken);
+        if (res.success) return true;
+
+        setError(res.error?.message || 'Failed to resend OTP');
+        return false;
+    }, [twoFactorPending]);
+
+    const cancel2FA = useCallback(() => {
+        setTwoFactorPending(null);
+        setError(null);
     }, []);
 
     const signup = useCallback(async (name: string, email: string, password: string): Promise<boolean> => {
@@ -115,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         api.logout();
         setUser(null);
         setError(null);
+        setTwoFactorPending(null);
     }, []);
 
     const clearError = useCallback(() => {
@@ -127,8 +182,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 user,
                 loading,
                 error,
+                twoFactorPending,
                 login,
                 signup,
+                verify2FA,
+                resend2FAOTP,
+                cancel2FA,
                 loginAsGuest,
                 logout,
                 clearError,

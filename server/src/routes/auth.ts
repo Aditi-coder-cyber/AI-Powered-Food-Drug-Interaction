@@ -2,6 +2,8 @@ import { Router, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { requireAuth, AuthRequest } from '../middleware/auth';
+import { generateEmailOTP } from '../services/totpService';
+import { sendOTPEmail } from '../services/emailService';
 
 const router = Router();
 
@@ -86,7 +88,7 @@ router.post('/register', async (req: AuthRequest, res: Response): Promise<void> 
 
 /**
  * POST /api/auth/login
- * Verify credentials and return JWT.
+ * Verify credentials. If 2FA enabled → return tempToken; otherwise → return JWT.
  */
 router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -129,7 +131,37 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
             return;
         }
 
-        // Generate JWT
+        /* ─── 2FA Check ────────────────────────────────────────────── */
+        if (user.twoFactorEnabled && user.twoFactorMethod) {
+            // Generate temp token (NOT usable for auth — type: '2fa')
+            const tempToken = jwt.sign(
+                { userId: user._id, type: '2fa', method: user.twoFactorMethod },
+                process.env.JWT_SECRET || 'fallback-secret',
+                { expiresIn: '5m' }
+            );
+
+            // If email method, auto-send OTP
+            if (user.twoFactorMethod === 'email') {
+                const otp = generateEmailOTP();
+                await User.findByIdAndUpdate(user._id, {
+                    emailOtp: otp,
+                    emailOtpExpiry: new Date(Date.now() + 5 * 60 * 1000),
+                });
+                await sendOTPEmail(user.email, otp, user.name);
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    requires2FA: true,
+                    method: user.twoFactorMethod,
+                    tempToken,
+                },
+            });
+            return;
+        }
+
+        // No 2FA — issue full JWT directly
         const token = jwt.sign(
             { id: user._id },
             process.env.JWT_SECRET || 'fallback-secret',

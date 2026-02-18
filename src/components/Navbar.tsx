@@ -1,5 +1,6 @@
 import React from 'react';
 import { Shield, Home, Search, Clock, User, BookOpen, Activity, LogOut } from 'lucide-react';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface User {
   name: string;
@@ -46,16 +47,15 @@ export function Navbar({ user, currentPage, onNavigate, onLogout }: NavbarProps)
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentPage === item.id;
-              
+
               return (
                 <button
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${isActive
+                    ? 'bg-blue-100 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
                 >
                   <Icon className="size-5" />
                   <span className="hidden md:inline">{item.label}</span>
@@ -64,8 +64,10 @@ export function Navbar({ user, currentPage, onNavigate, onLogout }: NavbarProps)
             })}
           </div>
 
-          {/* User Menu */}
-          <div className="flex items-center gap-4">
+          {/* Language Switcher + User Menu */}
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <div className="w-px h-6 bg-gray-200" /> {/* separator */}
             {user ? (
               <>
                 <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">

@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
 import interactionRoutes from './routes/interactions';
 import chatRoutes from './routes/chat';
+import twoFactorRoutes from './routes/twoFactor';
 import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -64,6 +65,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/interactions', interactionRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/2fa', twoFactorRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, User, Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface SignupPageProps {
   onSignup: (name: string, email: string, password: string) => void;
@@ -34,7 +35,8 @@ export function SignupPage({ onSignup, onNavigate, authError, onClearError }: Si
   const passwordStrength = password.length >= 8;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 py-12 relative">
+      <div className="absolute top-4 right-4 z-50"><LanguageSwitcher /></div>
       <div className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">

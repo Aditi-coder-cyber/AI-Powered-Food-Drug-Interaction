@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, ArrowRight, CheckCircle, Search, Bell, FileText, TrendingUp, Users, Award, BookOpen, Eye, Zap, Heart, Pill, Apple } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface LandingPageProps {
   onNavigate: (page: 'login' | 'signup' | 'check' | 'learning' | 'trust') => void;
@@ -41,17 +42,15 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
             <div className="hidden md:flex items-center gap-8">
               <button
                 onClick={() => scrollToSection('home')}
-                className={`text-sm font-medium transition-colors hover:text-teal-600 ${
-                  activeSection === 'home' ? 'text-teal-600 border-b-2 border-teal-600 pb-1' : 'text-gray-700'
-                }`}
+                className={`text-sm font-medium transition-colors hover:text-teal-600 ${activeSection === 'home' ? 'text-teal-600 border-b-2 border-teal-600 pb-1' : 'text-gray-700'
+                  }`}
               >
                 Home
               </button>
               <button
                 onClick={() => scrollToSection('how-it-works')}
-                className={`text-sm font-medium transition-colors hover:text-teal-600 ${
-                  activeSection === 'how-it-works' ? 'text-teal-600 border-b-2 border-teal-600 pb-1' : 'text-gray-700'
-                }`}
+                className={`text-sm font-medium transition-colors hover:text-teal-600 ${activeSection === 'how-it-works' ? 'text-teal-600 border-b-2 border-teal-600 pb-1' : 'text-gray-700'
+                  }`}
               >
                 How It Works
               </button>
@@ -69,9 +68,8 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
               </button>
               <button
                 onClick={() => scrollToSection('contact')}
-                className={`text-sm font-medium transition-colors hover:text-teal-600 ${
-                  activeSection === 'contact' ? 'text-teal-600 border-b-2 border-teal-600 pb-1' : 'text-gray-700'
-                }`}
+                className={`text-sm font-medium transition-colors hover:text-teal-600 ${activeSection === 'contact' ? 'text-teal-600 border-b-2 border-teal-600 pb-1' : 'text-gray-700'
+                  }`}
               >
                 Contact
               </button>
@@ -79,6 +77,7 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
 
             {/* Auth Buttons */}
             <div className="flex items-center gap-3">
+              <LanguageSwitcher />
               <button
                 onClick={() => onNavigate('login')}
                 className="px-4 py-2 text-sm font-medium text-teal-700 hover:text-teal-800 hover:bg-teal-50 rounded-lg transition-colors"
@@ -159,8 +158,8 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
             <div className="relative">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1676552055618-22ec8cde399a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoZWFsdGhjYXJlJTIwbWVkaWNhbCUyMGlsbHVzdHJhdGlvbiUyMGRvY3RvciUyMHBhdGllbnR8ZW58MXx8fHwxNzcwMzc3Nzg5fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="Healthcare professional"
+                  src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1080&q=80"
+                  alt="Indian healthcare professional"
                   className="w-full h-auto"
                 />
                 {/* Overlay Card */}
@@ -196,7 +195,7 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
         {/* Wave Separator */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 0L60 10C120 20 240 40 360 46.7C480 53 600 47 720 43.3C840 40 960 40 1080 46.7C1200 53 1320 67 1380 73.3L1440 80V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="white"/>
+            <path d="M0 0L60 10C120 20 240 40 360 46.7C480 53 600 47 720 43.3C840 40 960 40 1080 46.7C1200 53 1320 67 1380 73.3L1440 80V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z" fill="white" />
           </svg>
         </div>
       </section>
@@ -433,8 +432,8 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
             <div className="relative">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1758202292826-c40e172eed1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpY2FsJTIwdGVjaG5vbG9neSUyMEFJJTIwaGVhbHRoY2FyZXxlbnwxfHx8fDE3NzAzNzc3OTB8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="Medical technology"
+                  src="https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1080&q=80"
+                  alt="Modern medical technology"
                   className="w-full h-auto"
                 />
               </div>
@@ -466,7 +465,7 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
               Create Account
             </button>
           </div>
-          
+
           {/* Contact Info */}
           <div className="mt-12 pt-12 border-t border-teal-500">
             <p className="text-teal-100 mb-4">Have questions? We're here to help.</p>
@@ -494,7 +493,7 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
                 Making medication safety accessible to everyone through AI-powered analysis.
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-white mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
@@ -504,7 +503,7 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
                 <li><button onClick={onGuestCheck} className="hover:text-white">Try It Free</button></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-white mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
@@ -514,7 +513,7 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
                 <li><button onClick={() => scrollToSection('contact')} className="hover:text-white">Contact</button></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold text-white mb-4">Legal</h4>
               <p className="text-sm">
@@ -522,7 +521,7 @@ export function LandingPage({ onNavigate, onGuestCheck }: LandingPageProps) {
               </p>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm">
             <p>© 2026 SafeMed AI. All rights reserved. Built with care for your health.</p>
           </div>

@@ -86,11 +86,18 @@ class ApiService {
     }
 
     async login(email: string, password: string) {
-        const res = await this.request<{ token: string; user: any }>('/auth/login', {
+        const res = await this.request<{
+            token?: string;
+            user?: any;
+            requires2FA?: boolean;
+            method?: string;
+            tempToken?: string;
+        }>('/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email, password }),
         });
-        if (res.success && res.data) {
+        // Only set token if no 2FA required
+        if (res.success && res.data && res.data.token && !res.data.requires2FA) {
             this.setToken(res.data.token);
         }
         return res;
@@ -140,7 +147,58 @@ class ApiService {
             body: JSON.stringify({ sessionId, message, language }),
         });
     }
+
+    // ─── Two-Factor Auth ──────────────────────────────────────────────────────
+
+    async get2FAStatus() {
+        return this.request<{ enabled: boolean; method: string | null }>('/2fa/status');
+    }
+
+    async setup2FAEmail() {
+        return this.request<{ message: string }>('/2fa/setup/email', {
+            method: 'POST',
+        });
+    }
+
+    async setup2FATOTP() {
+        return this.request<{ qrCode: string; manualKey: string; message: string }>('/2fa/setup/totp', {
+            method: 'POST',
+        });
+    }
+
+    async verifySetup2FA(code: string, method: 'email' | 'totp') {
+        return this.request<{ message: string }>('/2fa/verify-setup', {
+            method: 'POST',
+            body: JSON.stringify({ code, method }),
+        });
+    }
+
+    async disable2FA(password: string) {
+        return this.request<{ message: string }>('/2fa/disable', {
+            method: 'POST',
+            body: JSON.stringify({ password }),
+        });
+    }
+
+    async send2FAOTP(tempToken: string) {
+        return this.request<{ message: string }>('/2fa/send-otp', {
+            method: 'POST',
+            body: JSON.stringify({ tempToken }),
+        });
+    }
+
+    async verify2FA(tempToken: string, code: string) {
+        const res = await this.request<{ token: string; user: any }>('/2fa/verify', {
+            method: 'POST',
+            body: JSON.stringify({ tempToken, code }),
+        });
+        if (res.success && res.data) {
+            this.setToken(res.data.token);
+        }
+        return res;
+    }
 }
 
 // Singleton instance
 export const api = new ApiService();
+

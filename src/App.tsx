@@ -36,7 +36,7 @@ interface InteractionResult {
 }
 
 function AppContent() {
-  const { user, login, signup, loginAsGuest, logout, loading, error, clearError, refreshUser } = useAuth();
+  const { user, login, signup, loginAsGuest, logout, loading, error, clearError, refreshUser, twoFactorPending, verify2FA, resend2FAOTP, cancel2FA } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [riskProfile, setRiskProfile] = useState<RiskProfileData | null>(null);
   const [currentResult, setCurrentResult] = useState<InteractionResult | null>(null);
@@ -81,10 +81,19 @@ function AppContent() {
       return;
     }
 
-    const success = await login(email, password);
+    const result = await login(email, password);
+    if (result === true) {
+      navigateTo('dashboard');
+    }
+    // If result === '2fa', stay on login page — LoginPage will show 2FA UI
+  };
+
+  const handleVerify2FA = async (code: string): Promise<boolean> => {
+    const success = await verify2FA(code);
     if (success) {
       navigateTo('dashboard');
     }
+    return success;
   };
 
   const handleSignup = async (name: string, email: string, password: string) => {
@@ -160,7 +169,16 @@ function AppContent() {
         <LandingPage onNavigate={navigateTo} onGuestCheck={handleCheckStart} />
       )}
       {currentPage === 'login' && (
-        <LoginPage onLogin={handleLogin} onNavigate={navigateTo} authError={error} onClearError={clearError} />
+        <LoginPage
+          onLogin={handleLogin}
+          onNavigate={navigateTo}
+          authError={error}
+          onClearError={clearError}
+          twoFactorPending={twoFactorPending}
+          onVerify2FA={handleVerify2FA}
+          onResend2FAOTP={resend2FAOTP}
+          onCancel2FA={cancel2FA}
+        />
       )}
       {currentPage === 'signup' && (
         <SignupPage onSignup={handleSignup} onNavigate={navigateTo} authError={error} onClearError={clearError} />

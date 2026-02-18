@@ -1,6 +1,7 @@
-import React from 'react';
-import { Shield, Search, User, Clock, BookOpen, Activity, AlertCircle, Settings, LogOut, TrendingUp } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, Search, User, Clock, BookOpen, Activity, AlertCircle, Settings, LogOut, TrendingUp, KeyRound } from 'lucide-react';
 import { Navbar } from './Navbar';
+import { TwoFactorSetup } from './TwoFactorSetup';
 
 interface User {
   name: string;
@@ -25,6 +26,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ user, onNavigate, onLogout, hasRiskProfile, recentChecks, currentPage }: DashboardProps) {
+  const [show2FASetup, setShow2FASetup] = useState(false);
   const getRiskColor = (level: 'mild' | 'moderate' | 'severe') => {
     switch (level) {
       case 'mild': return 'bg-green-100 text-green-700 border-green-200';
@@ -132,6 +134,19 @@ export function Dashboard({ user, onNavigate, onLogout, hasRiskProfile, recentCh
               {hasRiskProfile ? 'Manage your information' : 'Set up personalization'}
             </p>
           </button>
+
+          {!user.isGuest && (
+            <button
+              onClick={() => setShow2FASetup(true)}
+              className="bg-white border-2 border-gray-200 p-6 rounded-xl shadow hover:shadow-md transition-shadow text-left hover:border-purple-300"
+            >
+              <div className="w-12 h-12 bg-purple-100 text-purple-700 rounded-lg flex items-center justify-center mb-4">
+                <KeyRound className="size-6" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2 text-gray-900">Security (2FA)</h3>
+              <p className="text-gray-600">Manage two-factor authentication</p>
+            </button>
+          )}
         </div>
 
         {/* Stats Overview */}
@@ -192,7 +207,7 @@ export function Dashboard({ user, onNavigate, onLogout, hasRiskProfile, recentCh
               </button>
             </div>
           </div>
-          
+
           {recentChecks.length === 0 ? (
             <div className="p-12 text-center">
               <Search className="size-12 text-gray-300 mx-auto mb-4" />
@@ -255,6 +270,9 @@ export function Dashboard({ user, onNavigate, onLogout, hasRiskProfile, recentCh
           </button>
         </div>
       </div>
+
+      {/* 2FA Setup Modal */}
+      {show2FASetup && <TwoFactorSetup onClose={() => setShow2FASetup(false)} />}
     </div>
   );
 }
