@@ -4,22 +4,32 @@ import { Shield, Lock, Mail, AlertCircle } from 'lucide-react';
 interface LoginPageProps {
   onLogin: (email: string, password: string, isGuest?: boolean) => void;
   onNavigate: (page: 'signup' | 'landing') => void;
+  authError?: string | null;
+  onClearError?: () => void;
 }
 
-export function LoginPage({ onLogin, onNavigate }: LoginPageProps) {
+export function LoginPage({ onLogin, onNavigate, authError, onClearError }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
-      onLogin(email, password, false);
+      setIsLoading(true);
+      await onLogin(email, password, false);
+      setIsLoading(false);
     }
   };
 
   const handleGuestLogin = () => {
     onLogin('', '', true);
+  };
+
+  const handleNavigate = (page: 'signup' | 'landing') => {
+    onClearError?.();
+    onNavigate(page);
   };
 
   return (
@@ -34,6 +44,16 @@ export function LoginPage({ onLogin, onNavigate }: LoginPageProps) {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
           <p className="text-gray-600">Log in to access your personalized safety dashboard</p>
         </div>
+
+        {/* Error Banner */}
+        {authError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex gap-3">
+              <AlertCircle className="size-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{authError}</p>
+            </div>
+          </div>
+        )}
 
         {/* Login Card */}
         <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
@@ -91,9 +111,10 @@ export function LoginPage({ onLogin, onNavigate }: LoginPageProps) {
 
               <button
                 type="submit"
-                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium mb-4"
+                disabled={isLoading}
+                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Log In
+                {isLoading ? 'Logging in...' : 'Log In'}
               </button>
 
               <div className="relative my-6">
@@ -152,7 +173,7 @@ export function LoginPage({ onLogin, onNavigate }: LoginPageProps) {
             <Shield className="size-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-gray-700">
-                <strong>Your privacy is protected.</strong> We use industry-standard encryption 
+                <strong>Your privacy is protected.</strong> We use industry-standard encryption
                 and never share your medical information with third parties.
               </p>
             </div>
@@ -165,7 +186,7 @@ export function LoginPage({ onLogin, onNavigate }: LoginPageProps) {
             <AlertCircle className="size-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-gray-700">
-                <strong>Medical Disclaimer:</strong> This tool provides informational guidance 
+                <strong>Medical Disclaimer:</strong> This tool provides informational guidance
                 and does not replace professional medical advice. Always consult your healthcare provider.
               </p>
             </div>
@@ -177,14 +198,14 @@ export function LoginPage({ onLogin, onNavigate }: LoginPageProps) {
           <p className="text-gray-600">
             Don't have an account?{' '}
             <button
-              onClick={() => onNavigate('signup')}
+              onClick={() => handleNavigate('signup')}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               Sign up free
             </button>
           </p>
           <button
-            onClick={() => onNavigate('landing')}
+            onClick={() => handleNavigate('landing')}
             className="mt-4 text-gray-500 hover:text-gray-700 text-sm"
           >
             ← Back to Home

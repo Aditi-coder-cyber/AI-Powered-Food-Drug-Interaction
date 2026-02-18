@@ -1,0 +1,54 @@
+import Chat from '../models/Chat';
+import { askGemini } from './geminiService';
+import { CHAT_PROMPT } from '../utils/promptTemplates';
+
+const FALLBACK_MESSAGE =
+    "I'm unable to answer right now. Please consult a healthcare professional for guidance.";
+const FALLBACK_MESSAGE_HI =
+    "मैं अभी जवाब देने में असमर्थ हूँ। कृपया किसी स्वास्थ्य पेशेवर से मार्गदर्शन लें।";
+
+/**
+ * Handle a chat message: load context → build prompt → call Gemini → persist → return reply.
+ */
+export async function handleChat(
+    sessionId: string,
+    message: string,
+    language: 'en' | 'hi' = 'en'
+): Promise<string> {
+    try {
+        // Load last 5 messages for conversational context
+        const previousChats = await Chat.find({ sessionId })
+            .sort({ createdAt: 1 })
+            .limit(5);
+
+        const context = previousChats
+            .map((c: any) => `User: ${c.userMessage}\nAI: ${c.aiReply}`)
+            .join('\n');
+
+        const prompt = CHAT_PROMPT(context, message, language);
+
+        const aiReply = await askGemini(prompt);
+
+        // Persist conversation
+        await Chat.create({
+            sessionId,
+            userMessage: message,
+            aiReply,
+            source: 'gemini-ai-v1',
+            confidence: 'medium',
+        });
+
+        return aiReply;
+    } catch (error: any) {
+        console.error('❌ Chat service error:', error.message || error);
+
+        const fallback = language === 'hi' ? FALLBACK_MESSAGE_HI : FALLBACK_MESSAGE;
+
+        if (error.status === 429) {
+            return language === 'hi'
+                ? "अभी बहुत अधिक अनुरोध आ रहे हैं। कृपया कुछ देर बाद पुनः प्रयास करें।"
+                : "I'm currently experiencing high demand. Please wait a moment and try again. If this persists, consult a healthcare professional.";
+        }
+        return fallback;
+    }
+}

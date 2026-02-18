@@ -39,14 +39,16 @@ export function InteractionCheck({ onComplete, onNavigate, isGuest, user, onLogo
     }
   };
 
-  const handleFoodSubmit = () => {
+  const handleFoodSubmit = async () => {
     if (food.trim()) {
       setIsAnalyzing(true);
-      // Simulate AI processing
-      setTimeout(() => {
+      try {
+        await onComplete(medication, food);
+      } catch (err) {
+        console.error('Analysis failed:', err);
+      } finally {
         setIsAnalyzing(false);
-        onComplete(medication, food);
-      }, 2000);
+      }
     }
   };
 
