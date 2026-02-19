@@ -15,7 +15,7 @@ const UI: Record<Language, {
     switchLabel: string;
 }> = {
     en: {
-        title: 'दवाई Dost Voice',
+        title: 'Ved Voice',
         idle: 'Tap mic to ask anything',
         listening: "Listening...",
         thinking: 'Thinking...',
@@ -24,7 +24,7 @@ const UI: Record<Language, {
         switchLabel: 'HI',
     },
     hi: {
-        title: 'दवाई Dost आवाज़',
+        title: 'Ved आवाज़',
         idle: 'माइक दबाकर पूछें',
         listening: 'सुन रहा हूँ...',
         thinking: 'सोच रहा हूँ...',

@@ -39,18 +39,18 @@ const UI_TEXT: Record<Language, {
     listening: string;
 }> = {
     en: {
-        title: 'दवाई Dost',
+        title: 'Ved',
         subtitle: 'Your Medicine Friend',
-        welcome: "Hi! I'm दवाई Dost 💊",
+        welcome: "Hi! I'm Ved 💊",
         welcomeSub: 'Ask me anything about food-drug interactions',
         placeholder: 'Ask about food-drug interactions...',
         thinking: 'Thinking...',
         listening: 'Listening...',
     },
     hi: {
-        title: 'दवाई Dost',
-        subtitle: 'आपका दवाई मित्र',
-        welcome: 'नमस्ते! मैं दवाई Dost हूँ 💊',
+        title: 'Ved',
+        subtitle: 'आपका दवा मित्र',
+        welcome: 'नमस्ते! मैं Ved हूँ 💊',
         welcomeSub: 'खाने और दवाइयों से जुड़ा कोई भी सवाल पूछें',
         placeholder: 'अपना सवाल यहाँ लिखें...',
         thinking: 'सोच रहा हूँ...',
@@ -280,7 +280,7 @@ export function Chatbot() {
                     onMouseLeave={(e) => {
                         (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
                     }}
-                    aria-label="Open दवाई Dost"
+                    aria-label="Open Ved"
                 >
                     <MessageCircle size={28} />
                 </button>

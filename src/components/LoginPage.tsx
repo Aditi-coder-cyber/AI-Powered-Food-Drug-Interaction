@@ -141,9 +141,10 @@ export function LoginPage({
     const isEmailMethod = twoFactorPending.method === 'email';
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 py-12 relative">
-        <div className="absolute top-4 right-4 z-50"><LanguageSwitcher /></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 py-12">
         <div className="max-w-md w-full">
+          {/* Language Switcher */}
+          <div className="flex justify-end mb-4"><LanguageSwitcher /></div>
           {/* Header */}
           <div className="text-center mb-8">
             <div
@@ -323,9 +324,10 @@ export function LoginPage({
   /* ─── Standard Login UI ─────────────────────────────────────────── */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 py-12 relative">
-      <div className="absolute top-4 right-4 z-50"><LanguageSwitcher /></div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
+        {/* Language Switcher */}
+        <div className="flex justify-end mb-4"><LanguageSwitcher /></div>
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
