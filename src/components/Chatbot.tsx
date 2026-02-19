@@ -82,6 +82,16 @@ function pickVoice(lang: Language): SpeechSynthesisVoice | null {
     return any || null;
 }
 
+/** Robustly clean text for speech synthesis */
+function cleanTextForSpeech(text: string): string {
+    return text
+        .replace(/[*_~`#]/g, '') // Remove all common Markdown artifacts
+        .replace(/[💊🎤🔊]/g, '') // Remove specific decorative emojis
+        .replace(/^[-+]\s+/gm, '') // Remove leading list markers
+        .replace(/\s+/g, ' ')      // Normalize whitespace
+        .trim();
+}
+
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
 export function Chatbot() {
@@ -93,6 +103,12 @@ export function Chatbot() {
     const [language, setLanguage] = useState<Language>('en');
     const [isListening, setIsListening] = useState(false);
     const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+
+    // Keep language in a ref to avoid closure bugs in async callbacks
+    const languageRef = useRef<Language>(language);
+    useEffect(() => {
+        languageRef.current = language;
+    }, [language]);
 
     // Voice agent state
     const [voiceState, setVoiceState] = useState<VoiceState>('idle');
@@ -141,7 +157,7 @@ export function Chatbot() {
         }
 
         const recognition = new SpeechRecognition();
-        recognition.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+        recognition.lang = languageRef.current === 'hi' ? 'hi-IN' : 'en-US';
         recognition.continuous = false;
         recognition.interimResults = false;
 
@@ -178,11 +194,15 @@ export function Chatbot() {
             return;
         }
 
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+        // Clean text for speech using robust helper
+        const cleanText = cleanTextForSpeech(text);
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        const currentLang = languageRef.current;
+        utterance.lang = currentLang === 'hi' ? 'hi-IN' : 'en-US';
 
         // Warmer, more natural settings
-        if (language === 'hi') {
+        if (currentLang === 'hi') {
             utterance.rate = 0.92;
             utterance.pitch = 1.05;
         } else {
@@ -190,7 +210,7 @@ export function Chatbot() {
             utterance.pitch = 1.0;
         }
 
-        const voice = pickVoice(language);
+        const voice = pickVoice(currentLang);
         if (voice) utterance.voice = voice;
 
         utterance.onstart = () => setSpeakingIdx(index);
@@ -198,7 +218,7 @@ export function Chatbot() {
         utterance.onerror = () => setSpeakingIdx(null);
 
         speechSynthesis.speak(utterance);
-    }, [language]);
+    }, []); // Only the ref is used inside, so technically we can keep dependency array minimal
 
     /* ── Send Message ────────────────────────────────────────────────── */
 
@@ -212,20 +232,22 @@ export function Chatbot() {
         setIsLoading(true);
 
         try {
-            const res = await api.sendChatMessage(getSessionId(), msgText, language);
+            const currentLang = languageRef.current;
+            const res = await api.sendChatMessage(getSessionId(), msgText, currentLang);
             const replyText =
                 res.success && res.data
                     ? res.data.reply
-                    : language === 'hi'
+                    : currentLang === 'hi'
                         ? 'मैं अभी जवाब देने में असमर्थ हूँ। कृपया किसी स्वास्थ्य पेशेवर से मार्गदर्शन लें।'
                         : "I'm unable to answer right now. Please consult a healthcare professional.";
             setMessages((prev) => [...prev, { role: 'ai', text: replyText }]);
         } catch {
+            const currentLang = languageRef.current;
             setMessages((prev) => [
                 ...prev,
                 {
                     role: 'ai',
-                    text: language === 'hi'
+                    text: currentLang === 'hi'
                         ? 'मैं अभी जवाब देने में असमर्थ हूँ। कृपया किसी स्वास्थ्य पेशेवर से मार्गदर्शन लें।'
                         : "I'm unable to answer right now. Please consult a healthcare professional.",
                 },
@@ -348,31 +370,40 @@ export function Chatbot() {
                             {/* Language Toggle */}
                             <button
                                 onClick={toggleLanguage}
-                                title={language === 'en' ? 'हिंदी में बदलें' : 'Switch to English'}
+                                title={language === 'en' ? 'Switch to Hindi / हिंदी में बदलें' : 'Switch to English / अंग्रेजी में बदलें'}
                                 style={{
                                     background: 'rgba(255,255,255,0.2)',
-                                    border: 'none',
+                                    border: '1px solid rgba(255,255,255,0.3)',
                                     color: '#fff',
                                     height: '32px',
-                                    padding: '0 10px',
-                                    borderRadius: '16px',
+                                    padding: '0 4px',
+                                    borderRadius: '8px',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px',
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    transition: 'background 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.3)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.2)';
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    overflow: 'hidden'
                                 }}
                             >
-                                <Globe size={14} />
-                                {language === 'en' ? 'HI' : 'EN'}
+                                <div style={{
+                                    padding: '0 8px',
+                                    background: language === 'en' ? '#fff' : 'transparent',
+                                    color: language === 'en' ? '#3b82f6' : '#fff',
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'all 0.2s'
+                                }}>EN</div>
+                                <div style={{
+                                    padding: '0 8px',
+                                    background: language === 'hi' ? '#fff' : 'transparent',
+                                    color: language === 'hi' ? '#3b82f6' : '#fff',
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'all 0.2s'
+                                }}>HI</div>
                             </button>
 
                             {/* Close */}
@@ -460,123 +491,134 @@ export function Chatbot() {
                     </div>
 
                     {/* ── VOICE MODE ──────────────────────────────────── */}
-                    {mode === 'voice' && (() => {
-                        const vsColors: Record<VoiceState, { ring: string; icon: string }> = {
-                            idle: { ring: 'rgba(139,92,246,0.1)', icon: '#8b5cf6' },
-                            listening: { ring: 'rgba(239,68,68,0.15)', icon: '#ef4444' },
-                            thinking: { ring: 'rgba(59,130,246,0.15)', icon: '#3b82f6' },
-                            speaking: { ring: 'rgba(16,185,129,0.15)', icon: '#10b981' },
-                            error: { ring: 'rgba(239,68,68,0.1)', icon: '#ef4444' },
-                        };
-                        const vc = vsColors[voiceState];
-                        const vsText: Record<VoiceState, string> = {
-                            idle: language === 'hi' ? 'माइक दबाकर पूछें' : 'Tap mic to ask anything',
-                            listening: language === 'hi' ? 'सुन रहा हूँ...' : 'Listening...',
-                            thinking: language === 'hi' ? 'सोच रहा हूँ...' : 'Thinking...',
-                            speaking: language === 'hi' ? 'बोल रहा हूँ...' : 'Speaking...',
-                            error: language === 'hi' ? 'फिर से कोशिश करें' : 'Try again',
-                        };
-
-                        const pickVoice = (lang: Language): SpeechSynthesisVoice | null => {
-                            const voices = speechSynthesis.getVoices();
-                            const loc = lang === 'hi' ? 'hi' : 'en';
-                            return voices.find((v) => v.lang.startsWith(loc) && v.name.toLowerCase().includes('google'))
-                                || voices.find((v) => v.lang.startsWith(loc)) || null;
-                        };
-
-                        const speakVoice = (text: string): Promise<void> =>
-                            new Promise((resolve) => {
-                                const u = new SpeechSynthesisUtterance(text);
-                                u.lang = language === 'hi' ? 'hi-IN' : 'en-US';
-                                if (language === 'hi') { u.rate = 0.9; u.pitch = 1.05; } else { u.rate = 0.95; u.pitch = 1.0; }
-                                const v = pickVoice(language); if (v) u.voice = v;
-                                u.onend = () => resolve(); u.onerror = () => resolve();
-                                speechSynthesis.speak(u);
-                            });
-
-                        const startVoice = () => {
-                            const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-                            if (!SR) { alert(language === 'hi' ? 'वॉइस सपोर्ट नहीं है' : 'Voice not supported'); return; }
-                            if (voiceRecRef.current) { voiceRecRef.current.abort(); voiceRecRef.current = null; setVoiceState('idle'); return; }
-                            setVoiceTranscript(''); setVoiceResponse(''); setVoiceState('listening');
-                            const rec = new SR();
-                            rec.lang = language === 'hi' ? 'hi-IN' : 'en-US';
-                            rec.continuous = false; rec.interimResults = true;
-                            rec.onresult = (e: any) => {
-                                let f = '', im = '';
-                                for (let i = 0; i < e.results.length; i++) { if (e.results[i].isFinal) f += e.results[i][0].transcript; else im += e.results[i][0].transcript; }
-                                setVoiceTranscript(f || im);
+                    {mode === 'voice' &&
+                        (() => {
+                            const vsColors: Record<VoiceState, { ring: string; icon: string }> = {
+                                idle: { ring: 'rgba(59,130,246,0.1)', icon: '#3b82f6' },
+                                listening: { ring: 'rgba(239,68,68,0.1)', icon: '#ef4444' },
+                                thinking: { ring: 'rgba(16,185,129,0.1)', icon: '#10b981' },
+                                speaking: { ring: 'rgba(139,92,246,0.1)', icon: '#8b5cf6' },
+                                error: { ring: 'rgba(239,68,68,0.1)', icon: '#ef4444' },
                             };
-                            rec.onend = () => {
-                                voiceRecRef.current = null;
-                                setVoiceTranscript((prev) => {
-                                    const t = prev.trim();
-                                    if (!t) { setVoiceState('idle'); return prev; }
-                                    setVoiceState('thinking');
-                                    (async () => {
-                                        try {
-                                            const sessionKey = `safemed_voice_session_${language}`;
-                                            const sid = sessionStorage.getItem(sessionKey) || (() => { const id = 'v-' + language + '-' + Date.now(); sessionStorage.setItem(sessionKey, id); return id; })();
-                                            const res = await api.sendChatMessage(sid, t, language);
-                                            const reply = res.success && res.data ? res.data.reply : (language === 'hi' ? 'जवाब नहीं मिला।' : 'No response.');
-                                            setVoiceResponse(reply);
-                                            setVoiceHistory((h) => [...h, { q: t, a: reply }]);
-                                            setVoiceState('speaking');
-                                            await speakVoice(reply);
-                                            setVoiceState('idle');
-                                        } catch { setVoiceResponse(language === 'hi' ? 'गड़बड़ हो गई।' : 'Error.'); setVoiceState('error'); setTimeout(() => setVoiceState('idle'), 2000); }
-                                    })();
-                                    return prev;
+                            const vc = vsColors[voiceState];
+                            const vsText: Record<VoiceState, string> = {
+                                idle: language === 'hi' ? 'माइक दबाकर पूछें' : 'Tap mic to ask anything',
+                                listening: language === 'hi' ? 'सुन रहा हूँ...' : 'Listening...',
+                                thinking: language === 'hi' ? 'सोच रहा हूँ...' : 'Thinking...',
+                                speaking: language === 'hi' ? 'बोल रहा हूँ...' : 'Speaking...',
+                                error: language === 'hi' ? 'फिर से कोशिश करें' : 'Try again',
+                            };
+
+                            const pickVoice = (lang: Language): SpeechSynthesisVoice | null => {
+                                const voices = speechSynthesis.getVoices();
+                                const loc = lang === 'hi' ? 'hi' : 'en';
+                                return voices.find((v) => v.lang.startsWith(loc) && v.name.toLowerCase().includes('google'))
+                                    || voices.find((v) => v.lang.startsWith(loc)) || null;
+                            };
+
+                            const speakVoice = (text: string): Promise<void> =>
+                                new Promise((resolve) => {
+                                    const cleanText = cleanTextForSpeech(text);
+                                    const u = new SpeechSynthesisUtterance(cleanText);
+                                    const currentLang = languageRef.current;
+                                    u.lang = currentLang === 'hi' ? 'hi-IN' : 'en-US';
+                                    if (currentLang === 'hi') { u.rate = 0.9; u.pitch = 1.05; } else { u.rate = 0.95; u.pitch = 1.0; }
+                                    const v = pickVoice(currentLang); if (v) u.voice = v;
+                                    u.onend = () => resolve(); u.onerror = () => resolve();
+                                    speechSynthesis.speak(u);
                                 });
-                            };
-                            rec.onerror = () => { voiceRecRef.current = null; setVoiceState('error'); setTimeout(() => setVoiceState('idle'), 2000); };
-                            voiceRecRef.current = rec; rec.start();
-                        };
 
-                        return (
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px 16px', background: '#fafbff' }}>
-                                {/* Animated mic */}
-                                <div style={{ position: 'relative', width: '120px', height: '120px' }}>
-                                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: vc.ring, animation: (voiceState === 'listening' || voiceState === 'speaking') ? 'vaPulse 1.5s ease-in-out infinite' : 'none' }} />
-                                    <div style={{ position: 'absolute', inset: '14px', borderRadius: '50%', background: vc.ring, animation: (voiceState === 'listening' || voiceState === 'speaking') ? 'vaPulse 1.5s ease-in-out 0.2s infinite' : 'none' }} />
-                                    <button
-                                        onClick={startVoice}
-                                        disabled={voiceState === 'thinking' || voiceState === 'speaking'}
-                                        style={{
-                                            position: 'absolute', inset: '28px', borderRadius: '50%', border: 'none',
-                                            background: `linear-gradient(135deg, ${vc.icon}, ${vc.icon}cc)`,
-                                            color: '#fff', cursor: (voiceState === 'thinking' || voiceState === 'speaking') ? 'default' : 'pointer',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            boxShadow: `0 0 24px ${vc.icon}30`, transition: 'all 0.3s',
-                                        }}
-                                    >
-                                        {voiceState === 'listening' ? <MicOff size={28} /> : voiceState === 'speaking' ? <Volume2 size={28} /> : voiceState === 'thinking' ? (
-                                            <div style={{ width: '28px', height: '28px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                                        ) : <Mic size={28} />}
-                                    </button>
+                            const startVoice = () => {
+                                const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                                if (!SR) { alert(language === 'hi' ? 'वॉइस सपोर्ट नहीं है' : 'Voice not supported'); return; }
+                                if (voiceRecRef.current) { voiceRecRef.current.abort(); voiceRecRef.current = null; setVoiceState('idle'); return; }
+                                setVoiceTranscript(''); setVoiceResponse(''); setVoiceState('listening');
+                                const rec = new SR();
+                                const currentLang = languageRef.current;
+                                rec.lang = currentLang === 'hi' ? 'hi-IN' : 'en-US';
+                                rec.continuous = false; rec.interimResults = true;
+                                rec.onresult = (e: any) => {
+                                    let f = '', im = '';
+                                    for (let i = 0; i < e.results.length; i++) { if (e.results[i].isFinal) f += e.results[i][0].transcript; else im += e.results[i][0].transcript; }
+                                    setVoiceTranscript(f || im);
+                                };
+                                rec.onend = () => {
+                                    voiceRecRef.current = null;
+                                    setVoiceTranscript((prevTranscript) => {
+                                        const t = prevTranscript.trim();
+                                        if (!t) { setVoiceState('idle'); return prevTranscript; }
+                                        setVoiceState('thinking');
+                                        (async () => {
+                                            try {
+                                                const currentLangAsync = languageRef.current;
+                                                const sessionKey = `safemed_voice_session_${currentLangAsync}`;
+                                                const sid = sessionStorage.getItem(sessionKey) || (() => { const id = 'v-' + currentLangAsync + '-' + Date.now(); sessionStorage.setItem(sessionKey, id); return id; })();
+                                                const res = await api.sendChatMessage(sid, t, currentLangAsync);
+                                                const reply = res.success && res.data ? res.data.reply : (currentLangAsync === 'hi' ? 'जवाब नहीं मिला।' : 'No response.');
+                                                setVoiceResponse(reply);
+                                                setVoiceHistory((h) => [...h, { q: t, a: reply }]);
+                                                setVoiceState('speaking');
+                                                await speakVoice(reply);
+                                                setVoiceState('idle');
+                                            } catch (err) {
+                                                console.error('Voice message error:', err);
+                                                const currentLangErr = languageRef.current;
+                                                setVoiceResponse(currentLangErr === 'hi' ? 'गड़बड़ हो गई।' : 'Error.');
+                                                setVoiceState('error');
+                                                setTimeout(() => setVoiceState('idle'), 2000);
+                                            }
+                                        })();
+                                        return prevTranscript;
+                                    });
+                                };
+                                rec.onerror = () => { voiceRecRef.current = null; setVoiceState('error'); setTimeout(() => setVoiceState('idle'), 2000); };
+                                voiceRecRef.current = rec; rec.start();
+                            };
+
+                            return (
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px 16px', background: '#fafbff' }}>
+                                    {/* Animated mic */}
+                                    <div style={{ position: 'relative', width: '120px', height: '120px' }}>
+                                        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: vc.ring, animation: (voiceState === 'listening' || voiceState === 'speaking') ? 'vaPulse 1.5s ease-in-out infinite' : 'none' }} />
+                                        <div style={{ position: 'absolute', inset: '14px', borderRadius: '50%', background: vc.ring, animation: (voiceState === 'listening' || voiceState === 'speaking') ? 'vaPulse 1.5s ease-in-out 0.2s infinite' : 'none' }} />
+                                        <button
+                                            onClick={startVoice}
+                                            disabled={voiceState === 'thinking' || voiceState === 'speaking'}
+                                            style={{
+                                                position: 'absolute', inset: '28px', borderRadius: '50%', border: 'none',
+                                                background: `linear-gradient(135deg, ${vc.icon}, ${vc.icon}cc)`,
+                                                color: '#fff', cursor: (voiceState === 'thinking' || voiceState === 'speaking') ? 'default' : 'pointer',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: `0 0 24px ${vc.icon}30`, transition: 'all 0.3s',
+                                            }}
+                                        >
+                                            {voiceState === 'listening' ? <MicOff size={28} /> : voiceState === 'speaking' ? <Volume2 size={28} /> : voiceState === 'thinking' ? (
+                                                <div style={{ width: '28px', height: '28px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                                            ) : <Mic size={28} />}
+                                        </button>
+                                    </div>
+                                    <p style={{ color: vc.icon, fontSize: '13px', fontWeight: 600, margin: 0 }}>{vsText[voiceState]}</p>
+                                    {voiceTranscript && (voiceState === 'listening' || voiceState === 'thinking') && (
+                                        <p style={{ color: '#64748b', fontSize: '13px', margin: 0, fontStyle: 'italic', textAlign: 'center', padding: '0 8px' }}>"{voiceTranscript}"</p>
+                                    )}
+                                    {voiceResponse && (voiceState === 'speaking' || voiceState === 'idle') && (
+                                        <div style={{ background: '#fff', borderRadius: '12px', padding: '12px', maxHeight: '100px', overflowY: 'auto', width: '100%', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                                            <p style={{ color: '#334155', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>{voiceResponse}</p>
+                                        </div>
+                                    )}
+                                    {voiceHistory.length > 0 && (
+                                        <div style={{ width: '100%', maxHeight: '80px', overflowY: 'auto', borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
+                                            {voiceHistory.slice(-2).map((h, i) => (
+                                                <div key={i} style={{ marginBottom: '4px' }}>
+                                                    <p style={{ color: '#94a3b8', fontSize: '11px', margin: 0 }}>🎤 {h.q}</p>
+                                                    <p style={{ color: '#64748b', fontSize: '11px', margin: 0 }}>💊 {h.a.slice(0, 60)}{h.a.length > 60 ? '…' : ''}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                <p style={{ color: vc.icon, fontSize: '13px', fontWeight: 600, margin: 0 }}>{vsText[voiceState]}</p>
-                                {voiceTranscript && (voiceState === 'listening' || voiceState === 'thinking') && (
-                                    <p style={{ color: '#64748b', fontSize: '13px', margin: 0, fontStyle: 'italic', textAlign: 'center', padding: '0 8px' }}>"{voiceTranscript}"</p>
-                                )}
-                                {voiceResponse && (voiceState === 'speaking' || voiceState === 'idle') && (
-                                    <div style={{ background: '#fff', borderRadius: '12px', padding: '12px', maxHeight: '100px', overflowY: 'auto', width: '100%', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                                        <p style={{ color: '#334155', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>{voiceResponse}</p>
-                                    </div>
-                                )}
-                                {voiceHistory.length > 0 && (
-                                    <div style={{ width: '100%', maxHeight: '80px', overflowY: 'auto', borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
-                                        {voiceHistory.slice(-2).map((h, i) => (
-                                            <div key={i} style={{ marginBottom: '4px' }}>
-                                                <p style={{ color: '#94a3b8', fontSize: '11px', margin: 0 }}>🎤 {h.q}</p>
-                                                <p style={{ color: '#64748b', fontSize: '11px', margin: 0 }}>💊 {h.a.slice(0, 60)}{h.a.length > 60 ? '…' : ''}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })()}
+                            );
+                        })()}
 
                     {/* ── CHAT MODE: Messages ────────────────────────────── */}
                     {mode === 'chat' && (

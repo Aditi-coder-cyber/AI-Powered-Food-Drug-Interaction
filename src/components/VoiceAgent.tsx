@@ -51,6 +51,16 @@ function pickVoice(lang: Language): SpeechSynthesisVoice | null {
     return voices.find((v) => v.lang.startsWith(locale)) || null;
 }
 
+/** Robustly clean text for speech synthesis */
+function cleanTextForSpeech(text: string): string {
+    return text
+        .replace(/[*_~`#]/g, '') // Remove all common Markdown artifacts
+        .replace(/[💊🎤🔊]/g, '') // Remove specific decorative emojis
+        .replace(/^[-+]\s+/gm, '') // Remove leading list markers
+        .replace(/\s+/g, ' ')      // Normalize whitespace
+        .trim();
+}
+
 export function VoiceAgent() {
     const [isOpen, setIsOpen] = useState(false);
     const [language, setLanguage] = useState<Language>('en');
@@ -59,6 +69,13 @@ export function VoiceAgent() {
     const [response, setResponse] = useState('');
     const [history, setHistory] = useState<{ q: string; a: string }[]>([]);
     const recognitionRef = useRef<any>(null);
+
+    // Keep language in a ref to avoid closure bugs in async callbacks
+    const languageRef = useRef<Language>(language);
+    useEffect(() => {
+        languageRef.current = language;
+    }, [language]);
+
     const txt = UI[language];
 
     useEffect(() => {
@@ -73,17 +90,21 @@ export function VoiceAgent() {
     const speak = useCallback(
         (text: string): Promise<void> =>
             new Promise((resolve) => {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
-                if (language === 'hi') { utterance.rate = 0.9; utterance.pitch = 1.05; }
+                // Clean text for speech using robust helper
+                const cleanText = cleanTextForSpeech(text);
+
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                const currentLang = languageRef.current;
+                utterance.lang = currentLang === 'hi' ? 'hi-IN' : 'en-US';
+                if (currentLang === 'hi') { utterance.rate = 0.9; utterance.pitch = 1.05; }
                 else { utterance.rate = 0.95; utterance.pitch = 1.0; }
-                const voice = pickVoice(language);
+                const voice = pickVoice(currentLang);
                 if (voice) utterance.voice = voice;
                 utterance.onend = () => resolve();
                 utterance.onerror = () => resolve();
                 speechSynthesis.speak(utterance);
             }),
-        [language]
+        []
     );
 
     const startConversation = useCallback(() => {
@@ -104,7 +125,8 @@ export function VoiceAgent() {
         setState('listening');
 
         const recognition = new SpeechRecognition();
-        recognition.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+        const currentLang = languageRef.current;
+        recognition.lang = currentLang === 'hi' ? 'hi-IN' : 'en-US';
         recognition.continuous = false;
         recognition.interimResults = true;
 
@@ -125,16 +147,19 @@ export function VoiceAgent() {
                 setState('thinking');
                 (async () => {
                     try {
-                        const res = await api.sendChatMessage(getSessionId(), finalText, language);
+                        const currentLangAsync = languageRef.current;
+                        const msgText = finalText;
+                        const res = await api.sendChatMessage(getSessionId(), msgText, currentLangAsync);
                         const replyText = res.success && res.data ? res.data.reply
-                            : language === 'hi' ? 'जवाब नहीं मिला।' : 'No response.';
+                            : currentLangAsync === 'hi' ? 'जवाब नहीं मिला।' : 'No response.';
                         setResponse(replyText);
-                        setHistory((h) => [...h, { q: finalText, a: replyText }]);
+                        setHistory((h) => [...h, { q: msgText, a: replyText }]);
                         setState('speaking');
                         await speak(replyText);
                         setState('idle');
                     } catch {
-                        setResponse(language === 'hi' ? 'गड़बड़ हो गई।' : 'Something went wrong.');
+                        const currentLangErr = languageRef.current;
+                        setResponse(currentLangErr === 'hi' ? 'गड़बड़ हो गई।' : 'Something went wrong.');
                         setState('error');
                         setTimeout(() => setState('idle'), 2000);
                     }
@@ -151,7 +176,7 @@ export function VoiceAgent() {
 
         recognitionRef.current = recognition;
         recognition.start();
-    }, [language, speak]);
+    }, [speak]);
 
     const stateColors: Record<AgentState, { ring: string; icon: string; glow: string }> = {
         idle: { ring: 'rgba(16,185,129,0.12)', icon: '#10b981', glow: 'rgba(16,185,129,0.3)' },
@@ -229,22 +254,40 @@ export function VoiceAgent() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <button
                                 onClick={() => setLanguage((l) => (l === 'en' ? 'hi' : 'en'))}
+                                title={language === 'en' ? 'Switch to Hindi / हिंदी में बदलें' : 'Switch to English / अंग्रेजी में बदलें'}
                                 style={{
                                     background: 'rgba(255,255,255,0.1)',
-                                    border: 'none',
+                                    border: '1px solid rgba(255,255,255,0.2)',
                                     color: '#fff',
-                                    padding: '4px 10px',
-                                    borderRadius: '12px',
+                                    height: '26px',
+                                    borderRadius: '6px',
                                     cursor: 'pointer',
-                                    fontSize: '11px',
-                                    fontWeight: 600,
+                                    fontSize: '10px',
+                                    fontWeight: 700,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px',
+                                    overflow: 'hidden',
+                                    padding: '0 2px'
                                 }}
                             >
-                                <Globe size={12} />
-                                {txt.switchLabel}
+                                <div style={{
+                                    padding: '0 6px',
+                                    background: language === 'en' ? '#fff' : 'transparent',
+                                    color: language === 'en' ? '#111827' : '#fff',
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'all 0.2s'
+                                }}>EN</div>
+                                <div style={{
+                                    padding: '0 6px',
+                                    background: language === 'hi' ? '#fff' : 'transparent',
+                                    color: language === 'hi' ? '#111827' : '#fff',
+                                    height: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'all 0.2s'
+                                }}>HI</div>
                             </button>
                             <button
                                 onClick={() => {
