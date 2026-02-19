@@ -83,8 +83,8 @@ export function LanguageSwitcher() {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${isOpen
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                     }`}
             >
                 <Globe className="size-4" />
@@ -118,8 +118,8 @@ export function LanguageSwitcher() {
                                 key={lang.code}
                                 onClick={() => handleSelect(lang.code)}
                                 className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${currentLang === lang.code
-                                        ? 'bg-blue-50 text-blue-700'
-                                        : 'text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : 'text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <div className="flex-1 min-w-0">

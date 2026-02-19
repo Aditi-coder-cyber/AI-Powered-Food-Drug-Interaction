@@ -1,9 +1,12 @@
+import dotenv from 'dotenv';
+// Load environment variables immediately
+dotenv.config();
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 
 import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
@@ -12,9 +15,6 @@ import chatRoutes from './routes/chat';
 import twoFactorRoutes from './routes/twoFactor';
 import visionRoutes from './routes/vision';
 import { errorHandler } from './middleware/errorHandler';
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

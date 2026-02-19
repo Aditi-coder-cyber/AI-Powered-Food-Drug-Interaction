@@ -25,14 +25,14 @@ export async function analyzeInteraction(
     food: string,
     riskProfile: IRiskProfile | null
 ): Promise<AnalysisResult> {
-    // Try Gemini AI first
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (geminiKey) {
+    // Try Hugging Face AI first
+    const hfToken = process.env.HF_TOKEN;
+    if (hfToken) {
         try {
-            const result = await analyzeWithGemini(medication, food, riskProfile, geminiKey);
+            const result = await analyzeWithHF(medication, food, riskProfile, hfToken);
             return result;
         } catch (error) {
-            console.warn('⚠️ Gemini AI failed, falling back to knowledge base:', (error as Error).message);
+            console.warn('⚠️ Hugging Face AI failed, falling back to knowledge base:', (error as Error).message);
         }
     }
 
@@ -41,15 +41,15 @@ export async function analyzeInteraction(
 }
 
 /**
- * Gemini AI-powered analysis
+ * Hugging Face AI-powered analysis
  */
-async function analyzeWithGemini(
+async function analyzeWithHF(
     medication: string,
     food: string,
     riskProfile: IRiskProfile | null,
     apiKey: string
 ): Promise<AnalysisResult> {
-    const ai = new GoogleGenAI({ apiKey });
+    const { generateResponse } = require('./hfService');
 
     const profileContext = riskProfile
         ? `\nPatient Profile:\n- Age group: ${riskProfile.age}\n- Medical conditions: ${riskProfile.conditions.length > 0 ? riskProfile.conditions.join(', ') : 'None reported'}\n- Known allergies: ${riskProfile.allergies.length > 0 ? riskProfile.allergies.join(', ') : 'None reported'}`
@@ -65,60 +65,42 @@ Provide a detailed, evidence-based analysis. You MUST respond with ONLY a valid 
 
 {
   "riskLevel": "mild" | "moderate" | "severe",
-  "explanation": "Clear explanation of the interaction mechanism in plain language. If no significant interaction exists, state that clearly.",
-  "clinicalImpact": "Specific clinical consequences. Include percentages or measurable impacts when known (e.g., 'reduces absorption by 30-40%'). If no interaction, explain why the combination is safe.",
-  "example": "A relatable real-world analogy or scenario illustrating the impact",
-  "recommendations": ["3-5 specific, actionable recommendations for the patient"],
-  "alternatives": ["2-4 safe food alternatives the patient can use instead"],
-  "timing": "Specific timing advice (e.g., 'Space by 2-4 hours' or 'No restrictions needed')",
-  "confidence": A number 70-99 representing your confidence level based on evidence strength
+  "explanation": "Clear explanation of the interaction mechanism in plain language.",
+  "clinicalImpact": "Specific clinical consequences.",
+  "example": "A relatable real-world analogy.",
+  "recommendations": ["3 specific recommendations"],
+  "alternatives": ["2 safe food alternatives"],
+  "timing": "Specific timing advice",
+  "confidence": A number 70-99
 }
 
-IMPORTANT RULES:
-- Be medically accurate — do not fabricate interactions where none exist
-- If the food and drug have NO known interaction, set riskLevel to "mild" and explain that the combination is generally safe
-- Consider the patient's profile (age, conditions) when assessing severity
-- For elderly patients (65+), be more conservative with risk assessment
-- Include specific drug mechanism details (e.g., CYP enzyme involvement, chelation, pH effects)
-- Confidence should be 90+ for well-documented interactions, 70-85 for less studied combinations`;
+IMPORTANT: Return ONLY the JSON. No preamble.`;
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: prompt,
-    });
+    const responseText = await generateResponse([
+        { role: "system", content: "You are a clinical pharmacologist. Always respond with JSON." },
+        { role: "user", content: prompt }
+    ]);
 
-    const text = response.text?.trim() || '';
-
-    // Parse the JSON response — handle potential markdown wrapping
-    let jsonText = text;
-    if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    // Parse the JSON response
+    let jsonText = responseText;
+    if (jsonText.includes('{')) {
+        jsonText = jsonText.substring(jsonText.indexOf('{'), jsonText.lastIndexOf('}') + 1);
     }
 
     const parsed = JSON.parse(jsonText);
 
-    // Validate and normalize the response
-    const validRiskLevels = ['mild', 'moderate', 'severe'];
-    const riskLevel = validRiskLevels.includes(parsed.riskLevel) ? parsed.riskLevel : 'moderate';
-
-    // Adjust for elderly patients
-    let finalRiskLevel = riskLevel;
-    if (riskProfile?.age === '65+' && riskLevel === 'moderate') {
-        finalRiskLevel = 'severe';
-    }
-
     return {
         medication,
         food,
-        riskLevel: finalRiskLevel,
-        explanation: parsed.explanation || 'Analysis completed.',
-        clinicalImpact: parsed.clinicalImpact || 'Consult your healthcare provider for details.',
+        riskLevel: parsed.riskLevel || 'moderate',
+        explanation: parsed.explanation || 'See details.',
+        clinicalImpact: parsed.clinicalImpact || 'Consult healthcare provider.',
         example: parsed.example || '',
-        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : ['Consult your healthcare provider'],
-        alternatives: Array.isArray(parsed.alternatives) ? parsed.alternatives : ['Discuss with your pharmacist'],
-        timing: parsed.timing || 'Consult your pharmacist for timing advice',
-        confidence: typeof parsed.confidence === 'number' ? Math.min(99, Math.max(70, parsed.confidence)) : 85,
-        source: 'gemini-ai-v1',
+        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+        alternatives: Array.isArray(parsed.alternatives) ? parsed.alternatives : [],
+        timing: parsed.timing || 'Standard spacing recommended.',
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 85,
+        source: 'huggingface-ai-v1',
     };
 }
 

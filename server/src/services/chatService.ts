@@ -1,5 +1,5 @@
 import Chat from '../models/Chat';
-import { askGemini } from './geminiService';
+const { askHF } = require('./hfService');
 import { CHAT_PROMPT } from '../utils/promptTemplates';
 
 const FALLBACK_MESSAGE =
@@ -27,7 +27,7 @@ export async function handleChat(
 
         const prompt = CHAT_PROMPT(context, message, language);
 
-        const aiReply = await askGemini(prompt);
+        const aiReply = await askHF(prompt);
 
         // Persist conversation
         await Chat.create({
@@ -44,11 +44,9 @@ export async function handleChat(
 
         const fallback = language === 'hi' ? FALLBACK_MESSAGE_HI : FALLBACK_MESSAGE;
 
-        if (error.status === 429) {
-            return language === 'hi'
-                ? "अभी बहुत अधिक अनुरोध आ रहे हैं। कृपया कुछ देर बाद पुनः प्रयास करें।"
-                : "I'm currently experiencing high demand. Please wait a moment and try again. If this persists, consult a healthcare professional.";
-        }
-        return fallback;
+        // Return a general friendly error instead of Gemini specific "High Demand"
+        return language === 'hi'
+            ? "क्षमा करें, वेद अभी जवाब देने में असमर्थ है। कृपया कुछ ही समय में पुनः प्रयास करें।"
+            : "I'm sorry, Ved is temporarily unavailable. Please try again in a moment.";
     }
 }
