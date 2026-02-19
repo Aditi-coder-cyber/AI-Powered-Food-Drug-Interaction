@@ -115,8 +115,8 @@ function AppContent() {
     navigateTo('check');
   };
 
-  const handleCheckComplete = async (medication: string, food: string) => {
-    const res = await api.checkInteraction(medication, food);
+  const handleCheckComplete = async (medication: string, food: string, inputType: 'text' | 'voice' | 'image' = 'text') => {
+    const res = await api.checkInteraction(medication, food, inputType);
     if (res.success && res.data) {
       const result: InteractionResult = {
         ...res.data.interaction,

@@ -15,7 +15,7 @@ router.post(
     optionalAuth,
     async (req: AuthRequest, res: Response): Promise<void> => {
         try {
-            const { medication, food } = req.body;
+            const { medication, food, inputType } = req.body;
 
             if (!medication || !food) {
                 res.status(400).json({
@@ -39,6 +39,7 @@ router.post(
                 await Interaction.create({
                     userId: req.user._id,
                     ...result,
+                    inputType: inputType || 'text',
                 });
             }
 

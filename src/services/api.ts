@@ -126,10 +126,10 @@ class ApiService {
 
     // ─── Interactions ──────────────────────────────────────────────────────────
 
-    async checkInteraction(medication: string, food: string) {
+    async checkInteraction(medication: string, food: string, inputType: 'text' | 'voice' | 'image' = 'text') {
         return this.request<{ interaction: any }>('/interactions/check', {
             method: 'POST',
-            body: JSON.stringify({ medication, food }),
+            body: JSON.stringify({ medication, food, inputType }),
         });
     }
 
@@ -145,6 +145,15 @@ class ApiService {
         return this.request<{ reply: string }>('/chat/chat', {
             method: 'POST',
             body: JSON.stringify({ sessionId, message, language }),
+        });
+    }
+
+    // ─── Vision ───────────────────────────────────────────────────────────────
+
+    async analyzeImage(image: string) {
+        return this.request<{ medicationName: string }>('/vision/analyze', {
+            method: 'POST',
+            body: JSON.stringify({ image }),
         });
     }
 

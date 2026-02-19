@@ -13,6 +13,7 @@ export interface IInteraction extends Document {
     timing: string;
     confidence: number;
     source: string; // e.g., "rule-based-v1", "ml-model-v2"
+    inputType: 'text' | 'voice' | 'image';
     timestamp: Date;
 }
 
@@ -53,6 +54,11 @@ const interactionSchema = new Schema<IInteraction>(
         source: {
             type: String,
             default: 'rule-based-v1',
+        },
+        inputType: {
+            type: String,
+            enum: ['text', 'voice', 'image'],
+            default: 'text',
         },
         timestamp: {
             type: Date,

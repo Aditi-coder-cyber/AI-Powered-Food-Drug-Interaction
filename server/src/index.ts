@@ -10,6 +10,7 @@ import profileRoutes from './routes/profile';
 import interactionRoutes from './routes/interactions';
 import chatRoutes from './routes/chat';
 import twoFactorRoutes from './routes/twoFactor';
+import visionRoutes from './routes/vision';
 import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -57,7 +58,7 @@ app.use('/api/', generalLimiter);
 app.use('/api/auth/', authLimiter);
 
 // ─── Body Parsing ──────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
@@ -66,6 +67,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/interactions', interactionRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/2fa', twoFactorRoutes);
+app.use('/api/vision', visionRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

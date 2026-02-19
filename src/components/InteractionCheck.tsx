@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Pill, Apple, Upload, Mic, ArrowLeft, ArrowRight, Loader } from 'lucide-react';
 import { Navbar } from './Navbar';
+import { api } from '../services/api';
 
 interface User {
   name: string;
@@ -9,7 +10,7 @@ interface User {
 }
 
 interface InteractionCheckProps {
-  onComplete: (medication: string, food: string) => void;
+  onComplete: (medication: string, food: string, inputType: 'text' | 'voice' | 'image') => void;
   onNavigate: (page: any) => void;
   isGuest: boolean;
   user: User | null;
@@ -21,7 +22,10 @@ export function InteractionCheck({ onComplete, onNavigate, isGuest, user, onLogo
   const [step, setStep] = useState<'medication' | 'food'>('medication');
   const [medication, setMedication] = useState('');
   const [food, setFood] = useState('');
+  const [inputType, setInputType] = useState<'text' | 'voice' | 'image'>('text');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const commonMedications = [
     'Warfarin', 'Metformin', 'Lisinopril', 'Atorvastatin', 'Levothyroxine',
@@ -43,12 +47,70 @@ export function InteractionCheck({ onComplete, onNavigate, isGuest, user, onLogo
     if (food.trim()) {
       setIsAnalyzing(true);
       try {
-        await onComplete(medication, food);
+        await onComplete(medication, food, inputType);
       } catch (err) {
         console.error('Analysis failed:', err);
       } finally {
         setIsAnalyzing(false);
       }
+    }
+  };
+
+  const startVoiceInput = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice recognition is not supported in this browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.start();
+
+    setIsProcessing(true);
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setMedication(transcript);
+      setInputType('voice');
+      setIsProcessing(false);
+    };
+
+    recognition.onerror = () => {
+      setIsProcessing(false);
+    };
+
+    recognition.onend = () => {
+      setIsProcessing(false);
+    };
+  };
+
+  const handleFileUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessing(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+        const res = await api.analyzeImage(base64);
+        if (res.success && res.data?.medicationName) {
+          setMedication(res.data.medicationName);
+          setInputType('image');
+        } else {
+          alert('Could not extract medication name from image. Please try again or type manually.');
+        }
+        setIsProcessing(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('File upload failed:', err);
+      setIsProcessing(false);
     }
   };
 
@@ -92,33 +154,58 @@ export function InteractionCheck({ onComplete, onNavigate, isGuest, user, onLogo
                 Medication Name
               </label>
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
+                {isProcessing ? (
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-blue-500">
+                    <Loader className="animate-spin" />
+                  </div>
+                ) : (
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-gray-400" />
+                )}
                 <input
                   type="text"
                   id="medication"
                   value={medication}
-                  onChange={(e) => setMedication(e.target.value)}
+                  onChange={(e) => {
+                    setMedication(e.target.value);
+                    setInputType('text');
+                  }}
                   onKeyPress={(e) => e.key === 'Enter' && handleMedicationNext()}
                   className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., Warfarin, Lisinopril..."
+                  placeholder={isProcessing ? "Processing..." : "e.g., Warfarin, Lisinopril..."}
                   autoFocus
+                  disabled={isProcessing}
                 />
               </div>
 
               <div className="flex gap-2 mt-6">
-                <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                <button
+                  onClick={handleFileUploadClick}
+                  disabled={isProcessing}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                >
                   <Upload className="size-4" />
                   <span className="text-sm">Upload Prescription</span>
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                <button
+                  onClick={startVoiceInput}
+                  disabled={isProcessing}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                >
                   <Mic className="size-4" />
                   <span className="text-sm">Voice Input</span>
                 </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
               </div>
 
               <button
                 onClick={handleMedicationNext}
-                disabled={!medication.trim()}
+                disabled={!medication.trim() || isProcessing}
                 className="w-full mt-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 Next: Add Food
@@ -132,7 +219,10 @@ export function InteractionCheck({ onComplete, onNavigate, isGuest, user, onLogo
                 {commonMedications.map((med) => (
                   <button
                     key={med}
-                    onClick={() => setMedication(med)}
+                    onClick={() => {
+                      setMedication(med);
+                      setInputType('text');
+                    }}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-700 border border-transparent hover:border-blue-300"
                   >
                     {med}
