@@ -1,3 +1,4 @@
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 const API_BASE = '/api';
 
 interface ApiResponse<T = any> {
@@ -43,7 +44,7 @@ class ApiService {
         }
 
         try {
-            const response = await fetch(`${API_BASE}${endpoint}`, {
+            const response = await fetch(`${API_BASE_URL}${API_BASE}${endpoint}`, {
                 ...options,
                 headers,
             });

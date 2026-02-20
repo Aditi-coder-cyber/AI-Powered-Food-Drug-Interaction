@@ -1,5 +1,5 @@
 import Chat from '../models/Chat';
-const { askHF } = require('./hfService');
+import { askGemini } from './geminiService';
 import { CHAT_PROMPT } from '../utils/promptTemplates';
 
 const FALLBACK_MESSAGE =
@@ -27,7 +27,7 @@ export async function handleChat(
 
         const prompt = CHAT_PROMPT(context, message, language);
 
-        const aiReply = await askHF(prompt);
+        const aiReply = await askGemini(prompt);
 
         // Persist conversation
         await Chat.create({
