@@ -25,14 +25,14 @@ export async function analyzeInteraction(
     food: string,
     riskProfile: IRiskProfile | null
 ): Promise<AnalysisResult> {
-    // Try Gemini AI first
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (geminiKey) {
+    // Try Hugging Face AI first
+    const hfToken = process.env.HF_TOKEN;
+    if (hfToken) {
         try {
-            const result = await analyzeWithGemini(medication, food, riskProfile);
+            const result = await analyzeWithHF(medication, food, riskProfile);
             return result;
         } catch (error) {
-            console.warn('⚠️ Gemini AI failed, falling back to knowledge base:', (error as Error).message);
+            console.warn('⚠️ Hugging Face AI failed, falling back to knowledge base:', (error as Error).message);
         }
     }
 
@@ -41,14 +41,14 @@ export async function analyzeInteraction(
 }
 
 /**
- * Gemini AI-powered analysis
+ * Hugging Face AI-powered analysis
  */
-async function analyzeWithGemini(
+async function analyzeWithHF(
     medication: string,
     food: string,
     riskProfile: IRiskProfile | null
 ): Promise<AnalysisResult> {
-    const { askGemini } = require('./geminiService');
+    const { generateResponse } = require('./hfService');
 
     const profileContext = riskProfile
         ? `\nPatient Profile:\n- Age group: ${riskProfile.age}\n- Medical conditions: ${riskProfile.conditions.length > 0 ? riskProfile.conditions.join(', ') : 'None reported'}\n- Known allergies: ${riskProfile.allergies.length > 0 ? riskProfile.allergies.join(', ') : 'None reported'}`
@@ -75,7 +75,10 @@ Provide a detailed, evidence-based analysis. You MUST respond with ONLY a valid 
 
 IMPORTANT: Return ONLY the JSON. No preamble.`;
 
-    const responseText = await askGemini(prompt);
+    const responseText = await generateResponse([
+        { role: "system", content: "You are a clinical pharmacologist. Always respond with JSON." },
+        { role: "user", content: prompt }
+    ]);
 
     // Parse the JSON response
     let jsonText = responseText;
@@ -96,7 +99,7 @@ IMPORTANT: Return ONLY the JSON. No preamble.`;
         alternatives: Array.isArray(parsed.alternatives) ? parsed.alternatives : [],
         timing: parsed.timing || 'Standard spacing recommended.',
         confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 85,
-        source: 'gemini-ai-v1',
+        source: 'huggingface-ai-v1',
     };
 }
 

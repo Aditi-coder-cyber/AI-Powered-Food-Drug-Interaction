@@ -1,14 +1,17 @@
 import Chat from '../models/Chat';
-import { askGemini } from './geminiService';
 import { CHAT_PROMPT } from '../utils/promptTemplates';
+import { askHF } from './hfService';
+
 
 const FALLBACK_MESSAGE =
     "I'm unable to answer right now. Please consult a healthcare professional for guidance.";
+
 const FALLBACK_MESSAGE_HI =
     "मैं अभी जवाब देने में असमर्थ हूँ। कृपया किसी स्वास्थ्य पेशेवर से मार्गदर्शन लें।";
 
 /**
- * Handle a chat message: load context → build prompt → call Gemini → persist → return reply.
+ * Handle a chat message:
+ * load context → build prompt → call Hugging Face → persist → return reply
  */
 export async function handleChat(
     sessionId: string,
@@ -25,28 +28,29 @@ export async function handleChat(
             .map((c: any) => `User: ${c.userMessage}\nAI: ${c.aiReply}`)
             .join('\n');
 
+        // Build prompt
         const prompt = CHAT_PROMPT(context, message, language);
 
-        const aiReply = await askGemini(prompt);
+        // 🔥 CALL HUGGING FACE ONLY
+        const aiReply = await askHF(prompt);
+
 
         // Persist conversation
         await Chat.create({
             sessionId,
             userMessage: message,
             aiReply,
-            source: 'gemini-ai-v1',
+            source: 'huggingface-llm',
             confidence: 'medium',
         });
 
         return aiReply;
     } catch (error: any) {
-        console.error('❌ Chat service error:', error.message || error);
+        console.error('❌ Chat service error:', error?.message || error);
 
-        const fallback = language === 'hi' ? FALLBACK_MESSAGE_HI : FALLBACK_MESSAGE;
-
-        // Return a general friendly error instead of Gemini specific "High Demand"
+        // Friendly fallback (no provider-specific messages)
         return language === 'hi'
-            ? "क्षमा करें, वेद अभी जवाब देने में असमर्थ है। कृपया कुछ ही समय में पुनः प्रयास करें।"
+            ? "क्षमा करें, वेद अभी जवाब देने में असमर्थ है। कृपया कुछ समय बाद पुनः प्रयास करें।"
             : "I'm sorry, Ved is temporarily unavailable. Please try again in a moment.";
     }
 }

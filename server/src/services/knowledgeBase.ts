@@ -1,6 +1,6 @@
 /**
  * Comprehensive Food-Drug Interaction Knowledge Base
- * Clinically documented interactions used as fallback when Gemini API is unavailable.
+ * Clinically documented interactions used as fallback when Hugging Face API is unavailable.
  * Sources: FDA, DrugBank, clinical pharmacology references.
  */
 

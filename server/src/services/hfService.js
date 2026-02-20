@@ -5,7 +5,7 @@ const { InferenceClient } = require("@huggingface/inference");
  * Drop-in replacement for Gemini service
  */
 const client = new InferenceClient(process.env.HF_TOKEN);
-const MODEL = "meta-llama/Meta-Llama-3-8B-Instruct";
+const MODEL = "meta-llama/Llama-3.1-8B-Instruct";
 
 /**
  * Generates a response using Hugging Face Inference API (Text Generation)
