@@ -249,6 +249,13 @@ function AppContent() {
           currentPage={currentPage}
         />
       )}
+
+      {/* Footer Disclaimer */}
+      <footer className="mt-auto py-6 text-center text-gray-500 text-xs md:text-sm border-t border-gray-100 bg-white/50 backdrop-blur-sm">
+        <div className="max-w-4xl mx-auto px-4">
+          SafeMed AI is for educational purposes only and does not replace professional medical advice.
+        </div>
+      </footer>
     </div>
   );
 }
