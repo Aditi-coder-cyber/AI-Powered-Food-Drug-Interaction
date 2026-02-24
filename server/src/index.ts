@@ -18,13 +18,24 @@ import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/safemed';
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+    throw new Error('❌ MONGODB_URI is not defined');
+}
+
+const mongoUri: string = MONGODB_URI;
 
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet());
 app.use(
     cors({
-        origin: ['http://localhost:3000', 'http://localhost:5173'],
+        origin: [
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'https://aipoweredfooddruginteraction.vercel.app',
+            /\.vercel\.app$/, // allow all Vercel preview URLs
+        ],
         credentials: true,
     })
 );
@@ -87,7 +98,7 @@ app.use(errorHandler);
 // ─── Database Connection & Server Start ────────────────────────────────────────
 async function startServer() {
     try {
-        await mongoose.connect(MONGODB_URI);
+        await mongoose.connect(mongoUri);
         console.log('✅ Connected to MongoDB');
 
         const server = app.listen(PORT, () => {
